@@ -4,3 +4,4 @@ source 'https://rubygems.org'
 
 gem 'byebug'
 gem 'unicode-x'
+gem 'rspec'
