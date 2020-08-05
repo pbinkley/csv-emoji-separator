@@ -6,6 +6,13 @@ require 'csv'
 
 require 'byebug'
 
+inputfile = ARGV[0] || 'stoptmx.csv'
+inputcolumn = ARGV[1] || 'GraphImages/edge_media_to_caption/edges/0/node/text'
+idcolumn = ARGV[2] || 'GraphImages/id'
+
+outputhtml = "#{inputfile.sub(/.csv$/, '')}-output.html"
+outputcsv  = "#{inputfile.sub(/.csv$/, '')}-output.csv"
+
 NON_EMOJI_REGEX = /\p{In Basic Latin}
   |\p{In General Punctuation}
   |\p{In Combining Diacritical Marks}
@@ -21,21 +28,30 @@ NON_EMOJI_REGEX = /\p{In Basic Latin}
 emojiprocessor = EmojiProcessor.new
 
 # note: stopmtx.csv has weird line separators: 0d 0d 0a
-input = CSV.read('stoptmx.csv', skip_blanks: true, row_sep: "\r\r\n", headers: true)
+data = CSV.read(inputfile, skip_blanks: true, row_sep: "\r\r\n", headers: true)
 
-input.each_with_index do |row, index|
+data.each_with_index do |row, index|
   @row_number = index + 1
-  str = row['GraphImages/edge_media_to_caption/edges/0/node/text']
+  # add new columns
+  row['emojis'] = nil
+  row['emoji_names'] = nil
+
+  str = row[inputcolumn]
   next if str.nil?
 
-  id = row['GraphImages/id']
-  emoji_rows = emojiprocessor.process(str)
-  @html += "<h2>Row #{@row_number}: #{id}</h2\n<div class=\"str\">#{str}</div>\n<h3>Emojis#{ ' none' if emoji_rows.count == 0}</h3>\n"
-  next if emoji_rows.count == 0
+  id = row[idcolumn]
+  emoji_array = emojiprocessor.process(str)
+
+  @html += "<h2>Row #{@row_number}: #{id}</h2\n<div class=\"str\">#{str}</div>\n<h3>Emojis#{ ' none' if emoji_array.count == 0}</h3>\n"
+  next if emoji_array.count == 0
+
+  # insert columns for emojis and emoji-names
+  row['emojis'] = emoji_array.map { |e| e.emoji }.join('|')
+  row['emoji_names'] = emoji_array.map { |e| e.ename }.join('|')
 
   @html += "<table border=\"1\">\n"
   @html += "<tr><th>Emoji</th><th>Length</th><th>Unicode</th><th>Name</th><th>Blocks</th><th>Count</th></tr>\n"
-  emoji_rows.each do |emoji_info|
+  emoji_array.each do |emoji_info|
     @html += emoji_info.to_html
   end
 
@@ -52,8 +68,15 @@ end
 end
 
 @html += "</table></body></html>"
-File.open("stoptmx.html", "w:UTF-8") do |f| 
+
+# write html file
+File.open(outputhtml, "w:UTF-8") do |f| 
   f.write @html
 end 
+
+# write csv file
+File.open(outputcsv, 'w:UTF-8') do |f|
+  f.write(data.to_csv)
+end
 
 puts 'done'
