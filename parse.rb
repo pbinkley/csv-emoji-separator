@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
+
+require 'csv'
 require './lib/emoji.rb'
 require './lib/emojiprocessor.rb'
-require 'csv'
+require './lib/htmlreport.rb'
 
 require 'byebug'
 
@@ -21,10 +23,7 @@ NON_EMOJI_REGEX = /\p{In Basic Latin}
   |\p{In Braille Patterns}
   |\p{In Latin Extended-A}/x.freeze
 
-@html = "<html><head><meta charset=\"UTF-8\"><title>Emojis</title></head><body><h1>Emojis</h1>\n"
-@html += "<p>Generated at: #{Time.now}</p>\n"
-@html += "<p><a href=\"#list\">Jump to Emoji List</a></p>\n"
-
+@html_report = HTMLReport.new
 emojiprocessor = EmojiProcessor.new
 
 # note: stopmtx.csv has weird line separators: 0d 0d 0a
@@ -39,40 +38,21 @@ data.each_with_index do |row, index|
   str = row[inputcolumn]
   next if str.nil?
 
-  id = row[idcolumn]
   emoji_array = emojiprocessor.process(str)
 
-  @html += "<h2>Row #{@row_number}: #{id}</h2\n<div class=\"str\">#{str}</div>\n<h3>Emojis#{ ' none' if emoji_array.count == 0}</h3>\n"
-  next if emoji_array.count == 0
+  @html_report.add_row(@row_number, row[idcolumn], str, emoji_array.count)
+  next if emoji_array.count.zero?
 
   # insert columns for emojis and emoji-names
-  row['emojis'] = emoji_array.map { |e| e.emoji }.join('|')
-  row['emoji_names'] = emoji_array.map { |e| e.ename }.join('|')
+  row['emojis'] = emoji_array.map(&:emoji).join('|')
+  row['emoji_names'] = emoji_array.map(&:ename).join('|')
 
-  @html += "<table border=\"1\">\n"
-  @html += "<tr><th>Emoji</th><th>Length</th><th>Unicode</th><th>Name</th><th>Blocks</th><th>Count</th></tr>\n"
-  emoji_array.each do |emoji_info|
-    @html += emoji_info.to_html
-  end
-
-  @html += "</table><hr>\n"
+  @html_report.add_emojis(emoji_array)
 end
 
 @emojis = emojiprocessor.emojis
 
-@html += "<h2 id=\"list\">Emoji List</h2>\n"
-@html += "<table border=\"1\"><tr><th>Emoji</th><th>Length</th><th>Unicode</th><th>Name</th><th>Blocks</th><th>Count</th></tr>\n"
-@emojis.keys.sort.each do |emoji|
-  emoji_hash = @emojis[emoji]
-  @html += emoji_hash.to_html
-end
-
-@html += "</table></body></html>"
-
-# write html file
-File.open(outputhtml, "w:UTF-8") do |f| 
-  f.write @html
-end 
+@html_report.finish(@emojis, outputhtml)
 
 # write csv file
 File.open(outputcsv, 'w:UTF-8') do |f|
