@@ -1,9 +1,11 @@
 # frozen_string_literal: true
+
 require 'unicode/blocks'
 require 'unicode/sequence_name'
 require 'unicode/name'
 require 'byebug'
 
+# Engine for extracting emojis from a string and looking up their names
 class EmojiProcessor
   attr_reader :emojis
 
@@ -33,7 +35,6 @@ class EmojiProcessor
   def process_emojis(emojis)
     emoji_info = []
     until emojis.empty?
-      emoji = nil
       emoji_parsed = nil
 
       # we don't know how many characters may comprise the first emoji,

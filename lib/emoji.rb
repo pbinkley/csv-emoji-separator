@@ -1,8 +1,10 @@
 # frozen_string_literal: true
+
 require 'unicode/blocks'
 require 'unicode/sequence_name'
 require 'unicode/name'
 
+# Holds information about a single emoji
 class Emoji
   attr_reader :ename, :elength, :eblock, :ecount, :emoji
   attr_writer :ecount
